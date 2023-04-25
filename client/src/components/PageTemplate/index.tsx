@@ -53,7 +53,7 @@ const PageTemplate = ({ children }: Props) => {
 
   return (
     <div className="text-gray-200">
-      <SeparateOnboardingStep isVisible={isModalOpen} top={'5rem'}>
+      <SeparateOnboardingStep isVisible={isModalOpen}>
         <GithubConnectStep
           handleNext={() => {
             setModalOpen(false);
@@ -75,7 +75,7 @@ const PageTemplate = ({ children }: Props) => {
       </SeparateOnboardingStep>
       <NavBar userSigned />
       <div
-        className="flex my-16 w-screen overflow-hidden relative z-10"
+        className="flex my-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
       >
         {children}

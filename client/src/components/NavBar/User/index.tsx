@@ -173,12 +173,16 @@ const NavBarUser = ({ shareFiles, isSkeleton }: Props) => {
             ) : (
               <DropdownWithIcon
                 items={[
-                  {
-                    text: 'Settings',
-                    icon: <Cog />,
-                    type: MenuListItemType.DEFAULT,
-                    onClick: () => setSettingsOpen(true),
-                  },
+                  ...(!isSelfServe
+                    ? [
+                        {
+                          text: 'Settings',
+                          icon: <Cog />,
+                          type: MenuListItemType.DEFAULT,
+                          onClick: () => setSettingsOpen(true),
+                        },
+                      ]
+                    : []),
                   {
                     text: 'Documentation',
                     icon: <Magazine />,

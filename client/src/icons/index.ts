@@ -86,3 +86,7 @@ export { default as Magazine } from './Magazine';
 export { default as QuillIcon } from './Quill';
 export { default as SendIcon } from './Send';
 export { default as DiscordLogo } from './DiscordLogo';
+export { default as Globe2 } from './Globe2';
+export { default as Lock } from './Lock';
+export { default as LockFilled } from './LockFilled';
+export { default as HardDrive } from './HardDrive';

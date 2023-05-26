@@ -1,5 +1,4 @@
-import Button from '../Button';
-
+import NewButton from '../Button';
 type Props = {
   title: string;
   description: string;

@@ -4,7 +4,7 @@ import Button from './index';
 
 export default {
   title: 'components/Button',
-  component: Button,
+  component: NewButton,
 };
 
 const sizes = ['large', 'medium', 'small', 'tiny'] as const;

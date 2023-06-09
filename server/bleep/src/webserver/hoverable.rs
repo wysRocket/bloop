@@ -1,7 +1,13 @@
 use std::sync::Arc;
 
 use super::prelude::*;
-use crate::{indexes::Indexes, repo::RepoRef, symbol::SymbolLocations, text_range::TextRange};
+use crate::{
+    indexes::Indexes,
+    intelligence::{Language, TSLanguage, TreeSitterFile},
+    repo::RepoRef,
+    symbol::SymbolLocations,
+    text_range::TextRange,
+};
 
 use axum::{extract::Query, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
@@ -34,10 +40,18 @@ pub(super) async fn handle(
         Ok(doc) => doc,
         Err(e) => return Err(Error::user(e)),
     };
-    let ranges = match document.symbol_locations {
-        SymbolLocations::TreeSitter(graph) => graph.hoverable_ranges().collect(),
-        _ => return Err(Error::user("Intelligence is unavailable for this language")),
-    };
+
+    let ranges = TreeSitterFile::try_build(
+        document.content.as_bytes(),
+        document.lang.expect("requires language detection").as_str(),
+    )
+    .and_then(TreeSitterFile::hoverable_ranges)
+    .unwrap();
+
+    // let ranges = match document.symbol_locations {
+    //     SymbolLocations::TreeSitter(graph) => graph.hoverable_ranges().collect(),
+    //     _ => return Err(Error::user("Intelligence is unavailable for this language")),
+    // };
     Ok(json(HoverableResponse { ranges }))
 }
 

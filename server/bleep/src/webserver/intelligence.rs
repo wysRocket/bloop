@@ -238,7 +238,80 @@ pub(super) async fn handle(
     let node = scope_graph.node_by_range(payload.start, payload.end);
 
     let idx = match node {
-        None => return Err(Error::user("provided range is not a valid token")),
+        None => {
+            use crate::{
+                indexes::{reader::ContentReader, DocumentRead},
+                query::compiler::trigrams,
+                text_range::Point,
+            };
+            use tantivy::{
+                collector::TopDocs,
+                query::{BooleanQuery, QueryParser, TermQuery},
+                schema::{IndexRecordOption, Schema, Term},
+                IndexWriter,
+            };
+            // produce search based results here
+            let hovered_text = dbg!(&content.content.as_str()[payload.start..payload.end]);
+            let target = regex::Regex::new(&hovered_text).expect("failed to build regex");
+            // perform a text search for hovered_text
+            let file_source = &indexes.file.source;
+            let indexer = &indexes.file;
+
+            let query = dbg!({
+                let repo_ref_term =
+                    Term::from_field_text(indexer.source.repo_ref, &repo_ref.to_string());
+                let terms = trigrams(hovered_text)
+                    .map(|token| Term::from_field_text(indexer.source.content, token.as_str()))
+                    .map(|term| {
+                        Box::new(TermQuery::new(term, IndexRecordOption::Basic))
+                            as Box<dyn tantivy::query::Query>
+                    })
+                    .chain(std::iter::once(Box::new(TermQuery::new(
+                        repo_ref_term.clone(),
+                        IndexRecordOption::Basic,
+                    ))
+                        as Box<dyn tantivy::query::Query>))
+                    .collect::<Vec<Box<dyn tantivy::query::Query>>>();
+                BooleanQuery::intersection(terms)
+            });
+            let collector = TopDocs::with_limit(20);
+            let reader = indexes.file.reader.read().await;
+            let searcher = reader.searcher();
+            let results = searcher
+                .search(&query, &collector)
+                .expect("failed to search index");
+
+            dbg!(results.len());
+
+            let file_symbols = results
+                .into_iter()
+                .map(|(_, doc_addr)| {
+                    let retrieved_doc = searcher
+                        .doc(doc_addr)
+                        .expect("failed to get document by address");
+                    let doc = ContentReader.read_document(file_source, retrieved_doc);
+                    let data = target
+                        .find_iter(&doc.content)
+                        .map(|m| m.range())
+                        .map(|r| Snipper::default().expand(r, &doc.content, &doc.line_end_indices))
+                        .map(|location| {
+                            let range = TextRange::new(
+                                Point::new(location.byte_range.start, 0, 0),
+                                Point::new(location.byte_range.end, 0, 0),
+                            );
+                            let snippet = location.reify(&doc.content, &[]);
+                            SymbolOccurrence { range, snippet }
+                        })
+                        .collect::<Vec<_>>();
+                    let file = doc.relative_path.clone();
+                    FileSymbols { file, data }
+                })
+                .collect::<Vec<_>>();
+
+            return Ok(json(TokenInfoResponse::Definition {
+                references: dbg!(file_symbols),
+            }));
+        }
         Some(idx) => idx,
     };
 
